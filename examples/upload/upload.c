@@ -3,11 +3,14 @@
  * This file is a part of civetweb project, http://github.com/bel2125/civetweb
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <stdlib.h>
+/* This example is deprecated and no longer maintained.
+ * All relevant parts have been merged into the embedded_c example. */
+
+
 #ifdef _WIN32
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 #include <windows.h>
 #include <io.h>
 #define strtoll strtol
@@ -15,7 +18,12 @@ typedef __int64 int64_t;
 #else
 #include <inttypes.h>
 #include <unistd.h>
-#endif // !_WIN32
+#endif /* !_WIN32 */
+
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <stdlib.h>
 
 #include "civetweb.h"
 
@@ -23,9 +31,19 @@ typedef __int64 int64_t;
 /* callback: used to generate all content */
 static int begin_request_handler(struct mg_connection *conn)
 {
+    const char * tempPath = ".";
+#ifdef _WIN32
+    const char * env = getenv("TEMP");
+    if (!env) env = getenv("TMP");
+    if (env) tempPath = env;
+#else
+    tempPath = "/tmp";
+#endif
+
     if (!strcmp(mg_get_request_info(conn)->uri, "/handle_post_request")) {
+
         mg_printf(conn, "%s", "HTTP/1.0 200 OK\r\n\r\n");
-        mg_upload(conn, "/tmp");
+        mg_upload(conn, tempPath);
     } else {
         /* Show HTML form. */
         /* See http://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.1 */
@@ -48,7 +66,7 @@ static int begin_request_handler(struct mg_connection *conn)
                   (int) strlen(html_form), html_form);
     }
 
-    // Mark request as processed
+    /* Mark request as processed */
     return 1;
 }
 
@@ -79,7 +97,7 @@ int main(void)
 
     /* Display a welcome message */
     printf("File upload demo.\n");
-    printf("Open http://localhost:%s/ im your browser.\n\n", PORT);
+    printf("Open http://localhost:%s/ in your browser.\n\n", PORT);
 
     /* Start the server */
     ctx = mg_start(&callbacks, NULL, options);

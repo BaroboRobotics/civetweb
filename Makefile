@@ -60,14 +60,14 @@ BUILD_DIRS += $(BUILD_DIR)/test
 endif
 
 # only set main compile options if none were chosen
-CFLAGS += -W -Wall -O2 -D$(TARGET_OS) -Iinclude $(COPT) -DUSE_STACK_SIZE=102400
+CFLAGS += -Wall -Wextra -Wshadow -Wformat-security -Winit-self -Wmissing-prototypes -D$(TARGET_OS) -Iinclude $(COPT) -DUSE_STACK_SIZE=102400
 
 LIBS = -lpthread -lm
 
 ifdef WITH_DEBUG
-  CFLAGS += -g -DDEBUG_ENABLED
+  CFLAGS += -g -DDEBUG
 else
-  CFLAGS += -DNDEBUG
+  CFLAGS += -O2 -DNDEBUG
 endif
 
 ifdef WITH_CPP
@@ -81,8 +81,26 @@ ifdef WITH_LUA_SHARED
   WITH_LUA = 1
 endif
 
+ifdef WITH_LUAJIT_SHARED
+  WITH_LUA_SHARED = 1
+  WITH_LUA = 1
+  WITH_LUA_VERSION = 501
+endif
+
 ifdef WITH_LUA
   include resources/Makefile.in-lua
+endif
+
+ifdef WITH_SSJS
+  WITH_DUKTAPE = 1
+endif
+
+ifdef WITH_DUKTAPE_SHARED
+  WITH_DUKTAPE = 1
+endif
+
+ifdef WITH_DUKTAPE
+  include resources/Makefile.in-duktape
 endif
 
 ifdef WITH_IPV6
@@ -91,10 +109,6 @@ endif
 
 ifdef WITH_WEBSOCKET
   CFLAGS += -DUSE_WEBSOCKET
-  ifdef WITH_LUA
-    CFLAGS += -DUSE_TIMERS
-    LIBS += -lrt
-  endif
 endif
 
 ifdef CONFIG_FILE
@@ -129,13 +143,17 @@ ifeq ($(TARGET_OS),WIN32)
   RMRF = rmdir /s /q
 endif
 
+ifdef WITH_LUAJIT_SHARED
+  LIBS += -lluajit-5.1
+else
 ifdef WITH_LUA_SHARED
-  LIBS += -llua5.2
+  LIBS += $(LUA_SHARED_LIB_FLAG)
+endif
 endif
 
-ifneq (, $(findstring mingw32, $(shell gcc -dumpmachine)))
+ifneq (, $(findstring mingw32, $(shell $(CC) -dumpmachine)))
   BUILD_RESOURCES = $(BUILD_DIR)/$(WINDOWS_RESOURCES:.rc=.o)
-  LIBS := $(filter-out -lrt, $(LIBS)) -lws2_32 -lcomdlg32 -mwindows
+  LIBS += -lws2_32 -mwindows
   SHARED_LIB = dll
 else
   SHARED_LIB = so
@@ -155,6 +173,10 @@ help:
 	@echo " Make Options"
 	@echo "   WITH_LUA=1            build with Lua support; include Lua as static library"
 	@echo "   WITH_LUA_SHARED=1     build with Lua support; use dynamic linking to liblua5.2.so"
+	@echo "   WITH_LUA_VERSION=502  build with Lua 5.2.x (501 for Lua 5.1.x to 503 for 5.3.x)"
+	@echo "   WITH_DUKTAPE=1        build with Duktape support; include as static library"
+	@echo "   WITH_DUKTAPE_SHARED=1 build with Duktape support; use libduktape1.3.so"
+#	@echo "   WITH_DUKTAPE_VERSION=103 build with Duktape 1.3.x"
 	@echo "   WITH_DEBUG=1          build with GDB debug support"
 	@echo "   WITH_IPV6=1           with IPV6 support"
 	@echo "   WITH_WEBSOCKET=1      build with web socket support"
@@ -175,6 +197,7 @@ help:
 	@echo "   NO_SSL                disable SSL functionality"
 	@echo "   NO_SSL_DL             link against system libssl library"
 	@echo "   NO_FILES              do not serve files from a directory"
+	@echo "   NO_CACHING            disable caching (usefull for systems without timegm())"
 	@echo "   MAX_REQUEST_SIZE      maximum header size, default 16384"
 	@echo ""
 	@echo " Variables"
@@ -226,9 +249,12 @@ clean:
 	$(RMRF) $(BUILD_DIR)
 	$(eval version=$(shell grep "define CIVETWEB_VERSION" include/civetweb.h | sed 's|.*VERSION "\(.*\)"|\1|g'))
 	$(eval major=$(shell echo $(version) | cut -d'.' -f1))
+	$(RMRF) lib$(CPROG).a
 	$(RMRF) lib$(CPROG).so
 	$(RMRF) lib$(CPROG).so.$(major)
 	$(RMRF) lib$(CPROG).so.$(version).0
+	$(RMRF) $(CPROG)
+	$(RMF) $(UNIT_TEST_PROG)
 
 distclean: clean
 	@$(RMRF) VS2012/Debug VS2012/*/Debug  VS2012/*/*/Debug
@@ -236,6 +262,7 @@ distclean: clean
 	$(RMF) $(CPROG) lib$(CPROG).so lib$(CPROG).a *.dmg *.msi *.exe lib$(CPROG).dll lib$(CPROG).dll.a
 	$(RMF) $(UNIT_TEST_PROG)
 
+lib$(CPROG).a: CFLAGS += -fPIC
 lib$(CPROG).a: $(LIB_OBJECTS)
 	@$(RMF) $@
 	ar cq $@ $(LIB_OBJECTS)
@@ -252,7 +279,7 @@ lib$(CPROG).dll: CFLAGS += -fPIC
 lib$(CPROG).dll: $(LIB_OBJECTS)
 	$(LCC) -shared -o $@ $(CFLAGS) $(LDFLAGS) $(LIB_OBJECTS) $(LIBS) -Wl,--out-implib,lib$(CPROG).dll.a
 
-$(UNIT_TEST_PROG): CFLAGS += -Isrc
+$(UNIT_TEST_PROG): CFLAGS += -Isrc -g
 $(UNIT_TEST_PROG): $(LIB_SOURCES) $(LIB_INLINE) $(UNIT_TEST_SOURCES) $(BUILD_OBJECTS)
 	$(LCC) -o $@ $(CFLAGS) $(LDFLAGS) $(UNIT_TEST_SOURCES) $(BUILD_OBJECTS) $(LIBS)
 
@@ -274,7 +301,7 @@ $(BUILD_DIR)/%.o : %.c
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(BUILD_RESOURCES) : $(WINDOWS_RESOURCES)
-	windres $< $@
+	windres $(WINDRES_FLAGS) $< $@
 
 # This rules is used to keep the code formatted in a reasonable manor
 # For this to work astyle must be installed and in the path
