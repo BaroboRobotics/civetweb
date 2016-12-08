@@ -25,13 +25,13 @@ if(MSVC)
   # C4057: ... differs in indirection to slightly different base types from ...
   # C4245: signed/unsigned mismatch
   # C4244: possible loss of data
-  set_source_files_properties(src/civetweb.c
+  set_source_files_properties(../src/civetweb.c
     PROPERTIES COMPILE_FLAGS "/wd4057 /wd4245 /wd4244"
     )
 endif()
 
 add_library(${target}
-  src/civetweb.c src/CivetServer.cpp)
+  ../src/civetweb.c ../src/CivetServer.cpp)
 
 set_target_properties(${target} PROPERTIES
   VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}
@@ -41,7 +41,7 @@ set_target_properties(${target} PROPERTIES
   CXX_STANDARD_REQUIRED ON
 )
 
-target_include_directories(${target} PUBLIC include)
+target_include_directories(${target} PUBLIC ../include)
 
 if(WIN32)
   target_compile_definitions(${target}
