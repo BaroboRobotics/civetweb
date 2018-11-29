@@ -15,6 +15,7 @@ endif()
 target_include_directories(
   civetweb-c-library PUBLIC
   ${PROJECT_SOURCE_DIR}/include)
+if (CIVETWEB_INSTALL_C_LIBRARY)
 install(
   TARGETS civetweb-c-library
   ARCHIVE DESTINATION lib
@@ -25,6 +26,7 @@ install(FILES
   ${PROJECT_SOURCE_DIR}/include/civetweb.h
   DESTINATION include
   COMPONENT civetweb-c-library)
+endif()
 
 # Need Windows sockets if available
 find_package(WinSock)
@@ -254,7 +256,7 @@ if (CIVETWEB_ENABLE_SERVER_EXECUTABLE)
             TARGETS civetweb-c-executable
             ARCHIVE DESTINATION lib
             LIBRARY DESTINATION lib
-            RUNTIME DESTINATION bin
+            RUNTIME DESTINATION .
             COMPONENT server)
     endif()
     if (BUILD_SHARED_LIBS)

@@ -105,6 +105,11 @@ message(STATUS "Force x32 / x64 architecture - ${CIVETWEB_ARCH}")
 option(CIVETWEB_ENABLE_LUA "Enable Lua CGIs" OFF)
 message(STATUS "Lua CGI support - ${CIVETWEB_ENABLE_LUA}")
 
+# Enable installing CivetWeb C library
+option(CIVETWEB_INSTALL_C_LIBRARY "Disable installing CivetWeb C library" OFF)
+mark_as_advanced(FORCE CIVETWEB_INSTALL_C_LIBRARY) # Basic users can disable
+message(STATUS "C library installation - ${CIVETWEB_INSTALL_C_LIBRARY}")
+
 # Enable installing CivetWeb executables
 option(CIVETWEB_INSTALL_EXECUTABLE "Enable installing CivetWeb executable" ON)
 mark_as_advanced(FORCE CIVETWEB_INSTALL_EXECUTABLE) # Advanced users can disable
@@ -487,6 +492,7 @@ if (CIVETWEB_BUILD_TESTING)
 endif()
 
 # Set up CPack
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
 include(InstallRequiredSystemLibraries)
 set(CPACK_PACKAGE_VENDOR "civetweb Contributors")
 set(CPACK_PACKAGE_CONTACT "civetweb@users.noreply.github.com")
